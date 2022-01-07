@@ -38,6 +38,12 @@ class Patient(db.Model):
     patientIllness = db.Column(db.String(50), nullable = True)
     patientAge = db.Column(db.Integer, nullable=True)
 
+    doctorId = db.Column(db.Integer, db.ForeignKey('doctors.doctorId'), nullable=False)
+    doctor = db.relationship('Doctors', backref=db.backref('doctor', lazy=True))
+
+    areaId = db.Column(db.Integer, db.ForeignKey('location.areaid'), nullable = False)
+    location = db.relationship('Location', backref=db.backref('location', lazy=True))
+
     def __init__(self, patientName):
         self.patientName = patientName
     
@@ -65,6 +71,9 @@ class Payment(db.Model):
     paymentId = db.Column(db.Integer, primary_key=True)
     amount = db.Column(db.Integer, nullable = False)
     paymentMethod = db.Column(db.String(80), nullable=False)
+
+    patientId = db.Column(db.Integer, db.ForeignKey('patient.patientid'), nullable=False)
+    doctor = db.relationship('patient', backref=db.backref('patient', lazy=True))
 
     def __init__(self, amount):
         self.amount = amount
