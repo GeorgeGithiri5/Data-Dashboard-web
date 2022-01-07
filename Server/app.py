@@ -1,4 +1,4 @@
-from flask import Flask
+from flask import Flask, request
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 
@@ -39,7 +39,7 @@ class Patient(db.Model):
     patientAge = db.Column(db.Integer, nullable=True)
 
     doctorId = db.Column(db.Integer, db.ForeignKey('doctors.doctorId'), nullable=False)
-    doctor = db.relationship('Doctors', backref=db.backref('doctor', lazy=True))
+    doctor = db.relationship('Doctors', backref=db.backref('doctors', lazy=True))
 
     areaId = db.Column(db.Integer, db.ForeignKey('location.areaid'), nullable = False)
     location = db.relationship('Location', backref=db.backref('location', lazy=True))
@@ -73,10 +73,46 @@ class Payment(db.Model):
     paymentMethod = db.Column(db.String(80), nullable=False)
 
     patientId = db.Column(db.Integer, db.ForeignKey('patient.patientid'), nullable=False)
-    doctor = db.relationship('patient', backref=db.backref('patient', lazy=True))
+    doctor = db.relationship('Patient', backref=db.backref('Patient', lazy=True))
 
     def __init__(self, amount):
         self.amount = amount
 
     def __repr__(self):
         return f"<Payment {self.amount}>"
+
+
+# Develop Apis
+@app.route('/')
+def patient():
+    if request.method == 'POST':
+        if request.is_json:
+            data = request.get_json()
+            new_patient = Patient(
+                patientName=data['patientName'],
+                patientPhone = data['patientPhone'],
+                patientSex = data['patientSex'],
+                patientIllness = data['patientIllness'],
+                patientAge = data['patientAge'],
+                doctorId = data['doctorId'],
+                areaId = data['areaId']
+                )
+            db.session.add(new_patient)
+            db.session.commit()
+            return {"message": f"Patient {new_patient.patientName} has been added"}
+        else:
+            return {"error":"The request payload is not in Json format"}
+
+    elif request.method == 'GET':
+        patients = Patient.query.all()
+        results = [
+            {
+                "name":patient.patientName,
+                "phone": patient.patientPhone,
+                "Sex":patient.patientSex
+            } for patient in patients
+        ]
+        return f'{results}'
+
+if __name__ == '__main__':
+    app.run(debug=True)
