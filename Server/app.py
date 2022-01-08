@@ -1,4 +1,4 @@
-from flask import Flask, request
+from flask import Flask, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 
@@ -19,9 +19,10 @@ class Doctors(db.Model):
     doctorEmail = db.Column(db.String(80), nullable = False)
     doctorSpeciality = db.Column(db.String(60), nullable=False)
 
-    def __init__(self, doctorName, doctorEmail):
+    def __init__(self, doctorName, doctorEmail, doctorSpeciality):
         self.doctorName = doctorName
         self.doctorEmail = doctorEmail
+        self.doctorSpeciality = doctorSpeciality
 
     def __repr__(self):
         return f"<Doctor {self.doctorName}>"
@@ -44,8 +45,15 @@ class Patient(db.Model):
     areaId = db.Column(db.Integer, db.ForeignKey('location.areaid'), nullable = False)
     location = db.relationship('Location', backref=db.backref('location', lazy=True))
 
-    def __init__(self, patientName):
+    def __init__(self, patientName, patientPhone, patientSex, patientIllness, patientAge, doctorId, areaId):
         self.patientName = patientName
+        self.patientPhone = patientPhone
+        self.patientSex = patientSex
+        self.patientIllness = patientIllness
+        self.patientAge = patientAge
+        self.doctorId = doctorId
+        self.areaId = areaId
+
     
     def __repr__(self):
         return f"<Patient {self.patientName}>"
@@ -83,7 +91,8 @@ class Payment(db.Model):
 
 
 # Develop Apis
-@app.route('/')
+# patient
+@app.route('/patient', methods = ['POST', 'GET'])
 def patient():
     if request.method == 'POST':
         if request.is_json:
@@ -109,10 +118,46 @@ def patient():
             {
                 "name":patient.patientName,
                 "phone": patient.patientPhone,
-                "Sex":patient.patientSex
+                "Sex":patient.patientSex,
+                "Illness":patient.patientIllness,
+                "Age":patient.patientAge,
+                "doctorId": patient.doctorId,
+                "areaId":patient.areaId
             } for patient in patients
         ]
-        return f'{results}'
+        return jsonify(results)
+
+# Doctor API
+@app.route('/doctor', methods = ['POST', 'GET'])
+def doctor():
+    if request.method == 'POST':
+        if request.is_json:
+            data = request.get_json()
+            new_doctor = Doctors(
+                doctorName=data['doctorName'],
+                doctorEmail=data['doctorEmail'],
+                doctorSpeciality = data['doctorSpeciality']
+            )
+            db.session.add(new_doctor)
+            db.session.commit()
+
+            return {"Message": f"Doctor {new_doctor.doctorName} has been added"}
+        else:
+            return {"error":"The Request payload is not in Json Format"}
+
+    elif request.method == 'GET':
+        doctors = Doctors.query.all()
+        output = [
+            {
+                "Name":doctor.doctorName,
+                "Email":doctor.doctorEmail,
+                "Speciality":doctor.doctorSpeciality
+            } for doctor in doctors
+        ]  
+        return jsonify(output)
+
+
+
 
 if __name__ == '__main__':
     app.run(debug=True)
