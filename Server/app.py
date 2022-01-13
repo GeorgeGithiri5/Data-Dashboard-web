@@ -1,3 +1,4 @@
+from crypt import methods
 from flask import Flask, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
@@ -83,8 +84,11 @@ class Payment(db.Model):
     patientId = db.Column(db.Integer, db.ForeignKey('patient.patientid'), nullable=False)
     doctor = db.relationship('Patient', backref=db.backref('Patient', lazy=True))
 
-    def __init__(self, amount):
+    def __init__(self, amount, paymentMethod, patientId):
         self.amount = amount
+        self.paymentMethod = paymentMethod
+        self.patientId = patientId
+
 
     def __repr__(self):
         return f"<Payment {self.amount}>"
@@ -156,8 +160,58 @@ def doctor():
         ]  
         return jsonify(output)
 
+# Location API
+@app.route('/location', methods=['POST', 'GET'])
+def location():
+    if request.method == 'POST':
+        if request.is_json:
+            data = request.get_json()
+            new_loaction = Location(
+                area= data['area']
+            )
+            db.session.add(new_loaction)
+            db.session.commit()
 
+            return {"Message": f"{new_loaction.area} was added successfully!"}
+        else:
+            return {"error":"The request payload is not in JSON Format"}
+    elif request.method == 'GET':
+        areas = Location.query.all()
+        output = [
+            {
+                "Area": location.area
+            } for location in areas
+        ]
+        return jsonify(output)
 
+# Payment API
+@app.route('/payment', methods=['POST', 'GET'])
+def payment():
+    if request.method == 'POST':
+        if request.is_json:
+            data = request.get_json()
+            new_payment = Payment(
+                amount=data["amount"],
+                paymentMethod=data["paymentMethod"],
+                patientId=data["patientId"]
+            )
+            db.session.add(new_payment)
+            db.session.commit()
+
+            return {"Message": f"Payment Made Successfully"}
+        else:
+            return {"error":"The request payload is not in JSON format"}
+
+    elif request.method == 'GET':
+        payments = Payment.query.all()
+        output = [
+            {
+                "Amount":payment.amount,
+                "paymentMethod":payment.paymentMethod,
+                "patientId": payment.patientId
+            }for payment in payments
+        ]
+        return jsonify(output)
 
 if __name__ == '__main__':
     app.run(debug=True)
