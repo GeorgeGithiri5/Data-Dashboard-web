@@ -1,7 +1,11 @@
-from crypt import methods
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, render_template
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
+import plotly
+import plotly.express as px
+import pandas as pd
+import json
+import plotly.graph_objects as go
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:george@localhost/HealthTech'
@@ -129,7 +133,21 @@ def patient():
                 "areaId":patient.areaId
             } for patient in patients
         ]
-        return jsonify(results)
+        dataJson = json.dumps(results)
+
+        df = pd.read_json(dataJson)
+        print(df)
+        fig = go.Figure(data=[go.Table(
+                header=dict(values=list(df.columns),
+                            fill_color='paleturquoise',
+                            align='left'),
+                cells=dict(values=[df.name, df.phone, df.Illness],
+                        fill_color='lavender',
+                        align='left'))
+            ])
+        graphJSON = json.dumps(fig, cls=plotly.utils.PlotlyJSONEncoder)
+        
+        return render_template('index.html', graphJSON=graphJSON)
 
 # Doctor API
 @app.route('/doctor', methods = ['POST', 'GET'])
@@ -204,14 +222,22 @@ def payment():
 
     elif request.method == 'GET':
         payments = Payment.query.all()
-        output = [
-            {
+        output = [{
                 "Amount":payment.amount,
                 "paymentMethod":payment.paymentMethod,
                 "patientId": payment.patientId
-            }for payment in payments
-        ]
-        return jsonify(output)
+            }for payment in payments]
+       
+        dataJson = json.dumps(output)
+
+        # to_list = eval(dataJson)
+
+        df = pd.read_json(dataJson)
+        fig = px.bar(data_frame=df, x = df['paymentMethod'], y=df['Amount'], color=df['patientId'])
+        graphJSON = json.dumps(fig, cls=plotly.utils.PlotlyJSONEncoder)
+        # print(graphJSON)
+        
+        return render_template('index.html', graphJSON=graphJSON)
 
 if __name__ == '__main__':
     app.run(debug=True)
